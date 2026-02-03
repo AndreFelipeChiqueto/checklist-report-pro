@@ -11,23 +11,19 @@ const formatDate = (dateString: string) => {
 };
 
 const addHeader = (doc: jsPDF, title: string, info: InspectionData['generalInfo']) => {
-  // Header background
-  doc.setFillColor(26, 54, 93); // Primary blue
+  doc.setFillColor(26, 54, 93);
   doc.rect(0, 0, 210, 40, 'F');
   
-  // Title
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(title, 15, 18);
   
-  // Subtitle
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Elevador: ${info.elevatorNumber} | Cliente: ${info.client}`, 15, 28);
   doc.text(`Data: ${formatDate(info.date)} | Auditor: ${info.auditor}`, 15, 35);
   
-  // Reset text color
   doc.setTextColor(0, 0, 0);
   
   return 50;
@@ -59,10 +55,30 @@ const getStatusColor = (status: string): [number, number, number] => {
   }
 };
 
+const addImageToPDF = (doc: jsPDF, imageUrl: string, yPos: number, pageNumber: { value: number }): number => {
+  try {
+    const imgWidth = 60;
+    const imgHeight = 45;
+    
+    if (yPos + imgHeight > 270) {
+      addFooter(doc, pageNumber.value);
+      doc.addPage();
+      pageNumber.value++;
+      yPos = 20;
+    }
+    
+    doc.addImage(imageUrl, 'JPEG', 15, yPos, imgWidth, imgHeight);
+    return yPos + imgHeight + 5;
+  } catch (error) {
+    console.error('Erro ao adicionar imagem:', error);
+    return yPos;
+  }
+};
+
 export const generateCompletePDF = async (data: InspectionData): Promise<Blob> => {
   const doc = new jsPDF();
   let yPos = addHeader(doc, 'Relatório Completo de Inspeção', data.generalInfo);
-  let pageNumber = 1;
+  const pageNumber = { value: 1 };
   
   // General Info Section
   doc.setFontSize(12);
@@ -94,13 +110,12 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
   // Sections
   for (const section of data.sections) {
     if (yPos > 250) {
-      addFooter(doc, pageNumber);
+      addFooter(doc, pageNumber.value);
       doc.addPage();
-      pageNumber++;
+      pageNumber.value++;
       yPos = 20;
     }
     
-    // Section header
     doc.setFillColor(240, 240, 240);
     doc.rect(10, yPos - 5, 190, 10, 'F');
     doc.setFontSize(11);
@@ -109,29 +124,25 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
     doc.text(`${section.code} - ${section.title}`, 15, yPos + 2);
     yPos += 12;
     
-    // Items
     for (const item of section.items) {
-      if (yPos > 270) {
-        addFooter(doc, pageNumber);
+      if (yPos > 260) {
+        addFooter(doc, pageNumber.value);
         doc.addPage();
-        pageNumber++;
+        pageNumber.value++;
         yPos = 20;
       }
       
-      // Item code and title
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text(`${item.code} - ${item.title}`, 15, yPos);
       
-      // Status
       const statusColor = getStatusColor(item.status);
       doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
       doc.text(getStatusText(item.status), 170, yPos);
       
       yPos += 5;
       
-      // Description
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(8);
@@ -139,13 +150,18 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
       doc.text(descLines, 15, yPos);
       yPos += descLines.length * 4;
       
-      // Comment if exists
       if (item.comment) {
         doc.setTextColor(80, 80, 80);
         doc.setFont('helvetica', 'italic');
         const commentLines = doc.splitTextToSize(`Comentário: ${item.comment}`, 150);
         doc.text(commentLines, 15, yPos);
         yPos += commentLines.length * 4;
+      }
+      
+      // Add photo if exists
+      if (item.photoUrl) {
+        yPos += 2;
+        yPos = addImageToPDF(doc, item.photoUrl, yPos, pageNumber);
       }
       
       yPos += 3;
@@ -157,9 +173,9 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
   // Client observations
   if (data.clientObservations.length > 0) {
     if (yPos > 240) {
-      addFooter(doc, pageNumber);
+      addFooter(doc, pageNumber.value);
       doc.addPage();
-      pageNumber++;
+      pageNumber.value++;
       yPos = 20;
     }
     
@@ -174,13 +190,13 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
-    data.clientObservations.forEach((obs, index) => {
+    data.clientObservations.forEach((obs) => {
       doc.text(`• ${obs}`, 15, yPos);
       yPos += 6;
     });
   }
   
-  addFooter(doc, pageNumber);
+  addFooter(doc, pageNumber.value);
   
   return doc.output('blob');
 };
@@ -188,7 +204,7 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
 export const generatePendingPDF = async (data: InspectionData): Promise<Blob> => {
   const doc = new jsPDF();
   let yPos = addHeader(doc, 'Relatório de Pendências', data.generalInfo);
-  let pageNumber = 1;
+  const pageNumber = { value: 1 };
   
   const pendingItems: { section: string; item: InspectionItem }[] = [];
   
@@ -221,14 +237,13 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
     let currentSection = '';
     
     for (const { section, item } of pendingItems) {
-      if (yPos > 250) {
-        addFooter(doc, pageNumber);
+      if (yPos > 240) {
+        addFooter(doc, pageNumber.value);
         doc.addPage();
-        pageNumber++;
+        pageNumber.value++;
         yPos = 20;
       }
       
-      // Section header (only if changed)
       if (section !== currentSection) {
         currentSection = section;
         doc.setFillColor(240, 240, 240);
@@ -240,14 +255,12 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
         yPos += 12;
       }
       
-      // Item details
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(220, 53, 69);
       doc.text(`${item.code} - ${item.title}`, 15, yPos);
       yPos += 6;
       
-      // Description
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(8);
@@ -255,7 +268,6 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
       doc.text(descLines, 15, yPos);
       yPos += descLines.length * 4 + 2;
       
-      // Comment
       if (item.comment) {
         doc.setTextColor(0, 0, 0);
         doc.setFont('helvetica', 'italic');
@@ -264,12 +276,10 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
         yPos += commentLines.length * 4;
       }
       
-      // Photo indicator
+      // Add photo if exists
       if (item.photoUrl) {
-        doc.setTextColor(26, 54, 93);
-        doc.setFont('helvetica', 'normal');
-        doc.text('📷 Foto anexada', 15, yPos);
-        yPos += 5;
+        yPos += 2;
+        yPos = addImageToPDF(doc, item.photoUrl, yPos, pageNumber);
       }
       
       // Separator
@@ -282,9 +292,9 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
   // Client observations
   if (data.clientObservations.length > 0) {
     if (yPos > 240) {
-      addFooter(doc, pageNumber);
+      addFooter(doc, pageNumber.value);
       doc.addPage();
-      pageNumber++;
+      pageNumber.value++;
       yPos = 20;
     }
     
@@ -305,7 +315,7 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
     });
   }
   
-  addFooter(doc, pageNumber);
+  addFooter(doc, pageNumber.value);
   
   return doc.output('blob');
 };
