@@ -8,7 +8,7 @@ import {
   defaultGeneralInfo 
 } from '@/types/inspection';
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
+const generateId = () => crypto.randomUUID();
 
 export const useInspection = () => {
   const [inspection, setInspection] = useState<InspectionData>(() => ({
