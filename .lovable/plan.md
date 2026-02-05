@@ -1,89 +1,94 @@
 
 
-# Plano: Adicionar Opções Separadas para Câmera e Galeria
+# Plano: Adicionar Descrição Completa no Card Expandido
 
 ## Problema Identificado
 
-O comportamento de `<input type="file" accept="image/*">` varia entre dispositivos:
-- **Com `capture="environment"`**: Abre apenas a câmera (problema anterior)
-- **Sem `capture`**: O comportamento depende do navegador/dispositivo - alguns mostram escolha, outros vão direto para galeria
+Quando o usuário expande um item de inspeção, a descrição completa não é exibida. No cabeçalho do card, a descrição aparece com `line-clamp-2` (truncada em 2 linhas), mas na área expandida falta a descrição detalhada igual ao PDF.
 
-Como o comportamento nativo não é consistente entre dispositivos, a solução é criar **dois botões separados**: um para câmera e outro para galeria.
+Por exemplo, o item "1.1 - Quadro de força" tem a descrição:
+> "Fusíveis; Disjuntores; IDR; Cabeamento; Aterramento; Organização; Kit fechadura e/ou ferrolho"
 
----
-
-## Solução Proposta
-
-Criar dois inputs separados e dois botões distintos:
-
-1. **Botão "Tirar Foto"** → Input com `capture="environment"` (abre câmera)
-2. **Botão "Galeria"** → Input sem `capture` (abre galeria de fotos)
+Esta descrição completa aparece no PDF, mas não é visível quando o card é expandido na interface.
 
 ---
 
-## Alterações no Código
+## Solução
 
-### Arquivo: `src/components/inspection/PhotoCapture.tsx`
+Adicionar a descrição completa na área expandida do card, logo abaixo do título da seção expandida e antes do seletor de status.
+
+---
+
+## Alteração
+
+### Arquivo: `src/components/inspection/InspectionItemCard.tsx`
+
+Adicionar um bloco de descrição completa dentro da área expandida:
 
 ```text
-Mudanças:
-├── Adicionar segundo useRef para o input da galeria
-├── Criar input separado para câmera (com capture="environment")
-├── Criar input separado para galeria (sem capture)
-├── Substituir botão único por dois botões lado a lado
-│   ├── Botão câmera (ícone Camera)
-│   └── Botão galeria (ícone Image)
-└── Manter mesma lógica de handleFileChange para ambos
+{isExpanded && (
+  <div className="px-4 pb-4 space-y-4 animate-fade-in">
+    
+    ┌─────────────────────────────────────────────────┐
+    │  NOVO: Descrição Completa                       │
+    │  ────────────────────────────────────────────── │
+    │  Texto: {item.description}                      │
+    │  Estilo: bg-muted/50 p-3 rounded-lg            │
+    │  Texto: text-sm text-muted-foreground          │
+    └─────────────────────────────────────────────────┘
+    
+    <div className="border-t pt-4">
+      <label>Status</label>
+      <StatusSelector ... />
+    </div>
+    
+    ... resto do conteúdo
+  </div>
+)}
 ```
 
-### Estrutura Visual dos Botões
+### Estrutura Visual Final
 
 ```text
-┌─────────────────────────────────────────┐
-│  ┌─────────────┐    ┌─────────────┐     │
-│  │   📷        │    │   🖼️        │     │
-│  │  Câmera     │    │  Galeria    │     │
-│  └─────────────┘    └─────────────┘     │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│ [1.1]  Quadro de força                           [▼]   │
+│        Fusíveis; Disjuntores; IDR...  (truncado)       │
+│        [Pendente]                                       │
+├─────────────────────────────────────────────────────────┤
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 📋 Descrição Completa                             │  │
+│  │ Fusíveis; Disjuntores; IDR; Cabeamento;           │  │
+│  │ Aterramento; Organização; Kit fechadura           │  │
+│  │ e/ou ferrolho                                     │  │
+│  └───────────────────────────────────────────────────┘  │
+│                                                         │
+│  Status                                                 │
+│  [Conforme] [Não Conforme] [N/A] [Pendente]            │
+│                                                         │
+│  Foto (se não conforme)                                │
+│  [Câmera] [Galeria]                                    │
+│                                                         │
+│  Comentário                                            │
+│  [textarea]                                            │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Detalhes Técnicos
 
-### Inputs Ocultos
-```tsx
-// Input para câmera
-<input
-  ref={cameraInputRef}
-  type="file"
-  accept="image/*"
-  capture="environment"
-  onChange={handleFileChange}
-  className="hidden"
-/>
+Código a ser adicionado após `<div className="px-4 pb-4 space-y-4 animate-fade-in">`:
 
-// Input para galeria
-<input
-  ref={galleryInputRef}
-  type="file"
-  accept="image/*"
-  onChange={handleFileChange}
-  className="hidden"
-/>
+```tsx
+<div className="bg-muted/50 p-3 rounded-lg">
+  <p className="text-sm font-medium text-foreground mb-1">Descrição</p>
+  <p className="text-sm text-muted-foreground">{item.description}</p>
+</div>
 ```
 
-### Botões Separados
-- Dois botões com `flex-1` para dividir o espaço igualmente
-- Cada botão aciona seu respectivo input
-- Mantém o estilo visual atual (outline, border-dashed)
-
----
-
-## Benefícios
-
-- Funciona consistentemente em Android e iOS
-- Usuário tem controle total sobre a origem da foto
-- Interface clara e intuitiva
-- Resolve o problema de comportamento inconsistente entre navegadores
+| Aspecto | Valor |
+|---------|-------|
+| Arquivo | `src/components/inspection/InspectionItemCard.tsx` |
+| Linha de inserção | Após linha 54 |
+| Componentes novos | Nenhum (apenas div e p) |
 
