@@ -63,7 +63,7 @@ export const defaultGeneralInfo: GeneralInfo = {
   capacityKg: '',
   capacityPassengers: '',
   commandModel: '',
-  origin: 'tkE - Brasil',
+   origin: 'Brasil',
   supervisor: '',
   adjuster: '',
   finalAuditResponsible: '',
