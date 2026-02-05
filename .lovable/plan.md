@@ -1,131 +1,89 @@
 
 
-# Plano: README.md Personalizado (Sem TK)
+# Plano: Adicionar Opções Separadas para Câmera e Galeria
 
-## Resumo
+## Problema Identificado
 
-Criar um arquivo README.md profissional e personalizado para o aplicativo "Inspeção de Elevadores", substituindo o conteúdo genérico atual por documentação técnica completa, **sem nenhuma referência à marca TK**.
+O comportamento de `<input type="file" accept="image/*">` varia entre dispositivos:
+- **Com `capture="environment"`**: Abre apenas a câmera (problema anterior)
+- **Sem `capture`**: O comportamento depende do navegador/dispositivo - alguns mostram escolha, outros vão direto para galeria
 
-Também será necessário remover as referências a "TK" em outros arquivos do projeto.
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `README.md` | Substituição completa por documentação personalizada |
-| `capacitor.config.ts` | Alterar `appName` de "Inspeção Elevadores TK" para "Inspeção de Elevadores" |
-| `src/types/inspection.ts` | Alterar valor padrão de `origin` de "tkE - Brasil" para "Brasil" |
+Como o comportamento nativo não é consistente entre dispositivos, a solução é criar **dois botões separados**: um para câmera e outro para galeria.
 
 ---
 
-## Estrutura do Novo README.md
+## Solução Proposta
 
-### 1. Cabeçalho
-- Ícone e nome do projeto
-- Descrição curta
+Criar dois inputs separados e dois botões distintos:
 
-### 2. Sobre o Projeto
-- Aplicativo mobile para inspeção técnica de elevadores
-- Baseado nas normas NBR 16858 / EN-81
-- Checklist completo com 93 itens em 10 seções
+1. **Botão "Tirar Foto"** → Input com `capture="environment"` (abre câmera)
+2. **Botão "Galeria"** → Input sem `capture` (abre galeria de fotos)
 
-### 3. Funcionalidades
-- Checklist organizado por seções
-- Captura de fotos para não conformidades
-- Geração de PDFs (Relatório Completo e Pendências)
-- Observações do cliente
-- Estatísticas em tempo real
-- Interface mobile-first
+---
 
-### 4. Seções de Inspeção
-1. Casa de Máquina (11 itens)
-2. Topo da Cabina (12 itens)
-3. Caixa de Corrida (11 itens)
-4. Contrapeso (7 itens)
-5. Poço (9 itens)
-6. Embaixo da Cabina (8 itens)
-7. Pavimento (5 itens)
-8. Cabina Interna (7 itens)
-9. Testes de Comissionamento (19 itens)
-10. Aplicação de CTC (1 item)
+## Alterações no Código
 
-### 5. Tecnologias
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS + shadcn/ui
-- Capacitor (Android)
-- jsPDF
-
-### 6. Instalação e Execução
+### Arquivo: `src/components/inspection/PhotoCapture.tsx`
 
 ```text
-Pré-requisitos: Node.js 18+
-
-# Instalar dependências
-npm install
-
-# Iniciar servidor de desenvolvimento
-npm run dev
+Mudanças:
+├── Adicionar segundo useRef para o input da galeria
+├── Criar input separado para câmera (com capture="environment")
+├── Criar input separado para galeria (sem capture)
+├── Substituir botão único por dois botões lado a lado
+│   ├── Botão câmera (ícone Camera)
+│   └── Botão galeria (ícone Image)
+└── Manter mesma lógica de handleFileChange para ambos
 ```
 
-### 7. Build para Android (APK)
+### Estrutura Visual dos Botões
 
 ```text
-# Adicionar plataforma Android
-npx cap add android
-
-# Compilar o projeto
-npm run build
-
-# Sincronizar com Android
-npx cap sync android
-
-# Abrir no Android Studio
-npx cap open android
+┌─────────────────────────────────────────┐
+│  ┌─────────────┐    ┌─────────────┐     │
+│  │   📷        │    │   🖼️        │     │
+│  │  Câmera     │    │  Galeria    │     │
+│  └─────────────┘    └─────────────┘     │
+└─────────────────────────────────────────┘
 ```
-
-### 8. Estrutura de Pastas
-
-```text
-src/
-├── components/
-│   ├── inspection/    # Componentes da inspeção
-│   └── ui/            # Componentes shadcn/ui
-├── hooks/             # Hooks customizados
-├── pages/             # Páginas da aplicação
-├── types/             # Tipos TypeScript
-└── utils/             # Utilitários (PDF, etc)
-```
-
-### 9. Licença
-- MIT (padrão)
 
 ---
 
 ## Detalhes Técnicos
 
-### Alteração no capacitor.config.ts
-```typescript
-// De:
-appName: 'Inspeção Elevadores TK'
+### Inputs Ocultos
+```tsx
+// Input para câmera
+<input
+  ref={cameraInputRef}
+  type="file"
+  accept="image/*"
+  capture="environment"
+  onChange={handleFileChange}
+  className="hidden"
+/>
 
-// Para:
-appName: 'Inspeção de Elevadores'
+// Input para galeria
+<input
+  ref={galleryInputRef}
+  type="file"
+  accept="image/*"
+  onChange={handleFileChange}
+  className="hidden"
+/>
 ```
 
-### Alteração no src/types/inspection.ts
-```typescript
-// De:
-origin: 'tkE - Brasil'
-
-// Para:
-origin: 'Brasil'
-```
+### Botões Separados
+- Dois botões com `flex-1` para dividir o espaço igualmente
+- Cada botão aciona seu respectivo input
+- Mantém o estilo visual atual (outline, border-dashed)
 
 ---
 
-## Idioma
-Toda a documentação será escrita em português (pt-BR), mantendo consistência com o restante do aplicativo.
+## Benefícios
+
+- Funciona consistentemente em Android e iOS
+- Usuário tem controle total sobre a origem da foto
+- Interface clara e intuitiva
+- Resolve o problema de comportamento inconsistente entre navegadores
 
