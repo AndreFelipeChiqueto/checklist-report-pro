@@ -40,7 +40,6 @@ export const InspectionItemCard = ({
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-semibold text-foreground leading-tight">{item.title}</h4>
-          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
           <div className="mt-2">
             <StatusBadge status={item.status} size="sm" />
           </div>
