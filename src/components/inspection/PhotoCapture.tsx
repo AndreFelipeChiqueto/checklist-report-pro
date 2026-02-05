@@ -10,7 +10,8 @@ interface PhotoCaptureProps {
 }
 
 export const PhotoCapture = ({ photoUrl, onCapture, onRemove }: PhotoCaptureProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -21,10 +22,16 @@ export const PhotoCapture = ({ photoUrl, onCapture, onRemove }: PhotoCaptureProp
       };
       reader.readAsDataURL(file);
     }
+    // Reset input value to allow selecting the same file again
+    event.target.value = '';
   };
 
-  const handleCapture = () => {
-    inputRef.current?.click();
+  const handleCameraClick = () => {
+    cameraInputRef.current?.click();
+  };
+
+  const handleGalleryClick = () => {
+    galleryInputRef.current?.click();
   };
 
   if (photoUrl) {
@@ -47,27 +54,50 @@ export const PhotoCapture = ({ photoUrl, onCapture, onRemove }: PhotoCaptureProp
 
   return (
     <div className="space-y-2">
+      {/* Input para câmera */}
       <input
-        ref={inputRef}
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+      
+      {/* Input para galeria */}
+      <input
+        ref={galleryInputRef}
         type="file"
         accept="image/*"
         onChange={handleFileChange}
         className="hidden"
       />
-      <Button
-        variant="outline"
-        onClick={handleCapture}
-        className={cn(
-          'w-full h-24 flex flex-col gap-2 border-dashed border-2',
-          'hover:bg-accent/50 hover:border-accent'
-        )}
-      >
-        <div className="flex items-center gap-3">
+      
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          onClick={handleCameraClick}
+          className={cn(
+            'flex-1 h-20 flex flex-col gap-2 border-dashed border-2',
+            'hover:bg-accent/50 hover:border-accent'
+          )}
+        >
           <Camera className="w-6 h-6" />
-          <Image className="w-5 h-5" />
-        </div>
-        <span className="text-sm">Tirar foto ou selecionar</span>
-      </Button>
+          <span className="text-sm">Câmera</span>
+        </Button>
+        
+        <Button
+          variant="outline"
+          onClick={handleGalleryClick}
+          className={cn(
+            'flex-1 h-20 flex flex-col gap-2 border-dashed border-2',
+            'hover:bg-accent/50 hover:border-accent'
+          )}
+        >
+          <Image className="w-6 h-6" />
+          <span className="text-sm">Galeria</span>
+        </Button>
+      </div>
     </div>
   );
 };
