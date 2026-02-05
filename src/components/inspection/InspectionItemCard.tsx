@@ -52,6 +52,11 @@ export const InspectionItemCard = ({
 
       {isExpanded && (
         <div className="px-4 pb-4 space-y-4 animate-fade-in">
+          <div className="bg-muted/50 p-3 rounded-lg">
+            <p className="text-sm font-medium text-foreground mb-1">Descrição</p>
+            <p className="text-sm text-muted-foreground">{item.description}</p>
+          </div>
+
           <div className="border-t pt-4">
             <label className="text-sm font-medium text-foreground mb-2 block">Status</label>
             <StatusSelector value={item.status} onChange={onStatusChange} />
