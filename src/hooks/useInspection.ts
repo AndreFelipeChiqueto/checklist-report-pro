@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   InspectionData, 
   InspectionItem, 
@@ -8,18 +8,44 @@ import {
   defaultGeneralInfo 
 } from '@/types/inspection';
 
+const STORAGE_KEY = 'elevator-inspection-data';
 const generateId = () => crypto.randomUUID();
 
+const createNewInspection = (): InspectionData => ({
+  id: generateId(),
+  generalInfo: { ...defaultGeneralInfo },
+  sections: JSON.parse(JSON.stringify(inspectionSections)),
+  clientObservations: [],
+  finalObservations: '',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+
+const loadFromStorage = (): InspectionData | null => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar dados salvos:', error);
+  }
+  return null;
+};
+
 export const useInspection = () => {
-  const [inspection, setInspection] = useState<InspectionData>(() => ({
-    id: generateId(),
-    generalInfo: { ...defaultGeneralInfo },
-    sections: JSON.parse(JSON.stringify(inspectionSections)),
-    clientObservations: [],
-    finalObservations: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
+  const [inspection, setInspection] = useState<InspectionData>(() => {
+    return loadFromStorage() || createNewInspection();
+  });
+
+  // Salvar automaticamente no localStorage sempre que os dados mudam
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(inspection));
+    } catch (error) {
+      console.error('Erro ao salvar dados:', error);
+    }
+  }, [inspection]);
 
   const updateGeneralInfo = useCallback((info: Partial<GeneralInfo>) => {
     setInspection(prev => ({
@@ -141,15 +167,12 @@ export const useInspection = () => {
   }, [inspection.sections]);
 
   const resetInspection = useCallback(() => {
-    setInspection({
-      id: generateId(),
-      generalInfo: { ...defaultGeneralInfo },
-      sections: JSON.parse(JSON.stringify(inspectionSections)),
-      clientObservations: [],
-      finalObservations: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.error('Erro ao limpar dados:', error);
+    }
+    setInspection(createNewInspection());
   }, []);
 
   return {
