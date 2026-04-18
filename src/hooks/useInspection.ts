@@ -71,12 +71,15 @@ export const useInspection = () => {
     };
   }, []);
 
-  // Salvar automaticamente sempre que os dados mudam (após carregar)
+  // Salvar automaticamente com debounce de 500ms (reduz custo do JSON.stringify)
   useEffect(() => {
     if (!isLoaded) return;
-    storage.setItem(STORAGE_KEY, JSON.stringify(inspection)).catch((error) => {
-      console.error('Erro ao salvar dados:', error);
-    });
+    const timeout = setTimeout(() => {
+      storage.setItem(STORAGE_KEY, JSON.stringify(inspection)).catch((error) => {
+        console.error('Erro ao salvar dados:', error);
+      });
+    }, 500);
+    return () => clearTimeout(timeout);
   }, [inspection, isLoaded]);
 
   const updateGeneralInfo = useCallback((info: Partial<GeneralInfo>) => {

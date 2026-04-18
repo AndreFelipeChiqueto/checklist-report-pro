@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Camera, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { compressImage } from '@/lib/imageCompression';
 
 interface PhotoCaptureProps {
   photoUrls: string[];
@@ -13,16 +14,17 @@ export const PhotoCapture = ({ photoUrls, onAdd, onRemove }: PhotoCaptureProps) 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          onAdd(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      });
+      for (const file of Array.from(files)) {
+        try {
+          const compressed = await compressImage(file);
+          onAdd(compressed);
+        } catch (err) {
+          console.error('Erro ao comprimir imagem:', err);
+        }
+      }
     }
     // Reset input value to allow selecting the same file again
     event.target.value = '';
