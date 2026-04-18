@@ -1,132 +1,107 @@
 
-# Plano: Corrigir Descrições Completas dos Itens de Inspeção
 
-## Problema Identificado
+# Plano: Corrigir Persistência ao Fechar App + Múltiplas Fotos por Item
 
-Analisando os PDFs enviados, identifiquei que as descrições no código atual estao **incompletas**. O PDF de recebimento mostra que cada item deve ter:
+## Problema 1: Dados Perdidos ao Fechar App
 
-1. **Descrição tecnica** entre parenteses
-2. **Referencia ao protocolo MHC2/EOX** com instrucoes detalhadas
+### Causa Raiz
+O `capacitor.config.ts` (linhas 7-10) usa `server.url` apontando para o sandbox do Lovable. Isso faz o app Android carregar o site **remoto** dentro do WebView, o que é ótimo para hot-reload em desenvolvimento, **mas o `localStorage` fica vinculado ao domínio remoto e ao WebView do app**.
 
-### Exemplo - Item 1.1 Quadro de forca:
+Quando o usuário **fecha completamente** o app (não só minimiza):
+- O Android pode limpar o cache do WebView
+- O contexto de armazenamento do WebView é destruído
+- O `localStorage` do site remoto é perdido
 
-| Codigo Atual | PDF Completo |
-|--------------|--------------|
-| Fusiveis; Disjuntores; IDR; Cabeamento; Aterramento; Organizacao; Kit fechadura e/ou ferrolho | (Fusiveis; Disjuntores; IDR; Cabeamento; Aterramento; Organizacao; Kit fechadura e/ou ferrolho) ********** Item 1.2 do PROTOCOLO MHC2 e EOX: Verificar as condicoes da energia do empreendimento |
+Quando apenas **minimiza**, o WebView mantém o estado em memória, então parece funcionar.
+
+### Solução
+Usar **Capacitor Preferences** (armazenamento nativo persistente do dispositivo) em vez de apenas `localStorage`. Isso grava os dados no armazenamento nativo do Android/iOS, sobrevivendo a fechamentos do app, atualizações e reinícios do dispositivo.
+
+Estratégia híbrida:
+- **Web (navegador)**: continua usando `localStorage`
+- **App nativo (Capacitor)**: usa `@capacitor/preferences`
+- Detecção automática via `Capacitor.isNativePlatform()`
 
 ---
 
-## Solucao em 2 Partes
+## Problema 2: Apenas 1 Foto por Item
 
-### Parte 1: Interface - Remover descricao do cabecalho
+### Causa Raiz
+- `InspectionItem` (linha 10 de `types/inspection.ts`) tem `photoUrl?: string` — apenas uma string, não um array.
+- `PhotoCapture.tsx` substitui a foto existente a cada nova captura.
 
-No arquivo `src/components/inspection/InspectionItemCard.tsx`, remover a linha 43 que mostra a descricao truncada no cabecalho.
+### Solução
+1. Alterar tipo: `photoUrl?: string` → `photoUrls?: string[]`
+2. Refatorar `PhotoCapture.tsx` para:
+   - Mostrar grade com todas as fotos
+   - Botões "Câmera" e "Galeria" sempre visíveis (mesmo com fotos já adicionadas)
+   - Botão X individual em cada foto para remover
+3. Atualizar `useInspection.ts`:
+   - `updateItemPhoto` → `addItemPhoto` e `removeItemPhoto` (por índice)
+4. Atualizar `InspectionItemCard.tsx` para usar a nova API
+5. Atualizar `pdfGenerator.ts` para incluir todas as fotos no PDF
+6. Migração de dados antigos: ao carregar do storage, converter `photoUrl` (string) para `photoUrls` (array com 1 item)
 
-**Antes (card fechado):**
-```text
-[1.1]  Quadro de forca                    [v]
-       Fusiveis; Disjuntores; IDR...      <-- REMOVER
-       [Pendente]
+---
+
+## Detalhes Técnicos
+
+### Arquivo 1: `package.json` (instalar)
+- Adicionar `@capacitor/preferences`
+
+### Arquivo 2: `src/lib/storage.ts` (NOVO)
+Wrapper assíncrono que escolhe entre localStorage (web) e Preferences (nativo).
+```ts
+- getItem(key): Promise<string | null>
+- setItem(key, value): Promise<void>
+- removeItem(key): Promise<void>
 ```
 
-**Depois (card fechado):**
+### Arquivo 3: `src/hooks/useInspection.ts`
+- Carregar dados de forma assíncrona no mount via `useEffect` (não no `useState` initializer)
+- Salvar via wrapper assíncrono
+- Migrar `photoUrl` antigo para `photoUrls[]` ao carregar
+- Trocar `updateItemPhoto` por `addItemPhoto(sectionId, itemId, url)` e `removeItemPhoto(sectionId, itemId, index)`
+
+### Arquivo 4: `src/types/inspection.ts`
+- Linha 10: `photoUrl?: string` → `photoUrls?: string[]`
+
+### Arquivo 5: `src/components/inspection/PhotoCapture.tsx`
+Refatorar para suportar múltiplas fotos:
 ```text
-[1.1]  Quadro de forca                    [v]
-       [Pendente]
++----------------------------------+
+| [foto1 X] [foto2 X] [foto3 X]   |  ← grade
++----------------------------------+
+| [Camera]  [Galeria]              |  ← sempre visíveis
++----------------------------------+
 ```
+Nova interface:
+- `photoUrls: string[]`
+- `onAdd: (url) => void`
+- `onRemove: (index) => void`
+
+### Arquivo 6: `src/components/inspection/InspectionItemCard.tsx`
+Atualizar props para `onPhotoAdd` e `onPhotoRemove`.
+
+### Arquivo 7: `src/utils/pdfGenerator.ts`
+Iterar sobre `item.photoUrls` para incluir todas no PDF.
 
 ---
 
-### Parte 2: Dados - Atualizar descricoes completas
+## Resultado Esperado
 
-No arquivo `src/types/inspection.ts`, atualizar o campo `description` de cada item com o texto completo do PDF, incluindo:
-- Descricao tecnica entre parenteses
-- Referencia ao protocolo quando aplicavel
-- Normas NBR quando mencionadas
-
----
-
-## Detalhes Tecnicos
-
-### Alteracao 1: InspectionItemCard.tsx
-
-| Aspecto | Valor |
-|---------|-------|
-| Arquivo | `src/components/inspection/InspectionItemCard.tsx` |
-| Acao | Remover linha 43 |
-| Codigo a remover | `<p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>` |
-
-### Alteracao 2: inspection.ts
-
-Atualizar descricoes de todos os itens das 10 secoes:
-
-**Secao 1.0 - Casa de Maquina (11 itens):**
-- 1.1: Adicionar referencia ao Item 1.2 do PROTOCOLO MHC2 e EOX
-- 1.2: Adicionar Item 5.3 do PROTOCOLO MHC2
-- 1.4: Adicionar PROTOCOLO EOX Item 3.1
-- 1.6: Adicionar referencias aos Items 2.1-2.7, 4.1-4.3, 11.0 do PROTOCOLO MHC2
-- 1.7: Adicionar Item 3.1 do PROTOCOLO MHC2
-- 1.11: Adicionar Pontos 5.1, 5.2 do PROTOCOLO MHC2 e Item 3.3 do PROTOCOLO EOX
-
-**Secao 2.0 - Topo da Cabina (12 itens):**
-- 2.1: Adicionar Item 6.4 do PROTOCOLO MHC2 e PROTOCOLO EOX items 4.1, 4.2
-- 2.2: Adicionar Item 6.3 do PROTOCOLO MHC2
-- 2.4: Adicionar Item 6.5 do PROTOCOLO MHC2
-- 2.7: Adicionar Item 6.2 do PROTOCOLO MHC2
-- 2.12: Adicionar Ponto 6.4 do PROTOCOLO MHC2
-
-**Secao 3.0 - Caixa de Corrida (11 itens):**
-- 3.1: Adicionar Item 10.3 do PROTOCOLO MHC2
-- 3.5: Adicionar Item 7.1 do PROTOCOLO MHC2
-- 3.6: Adicionar referencia NBR 16858-1:2021 item 6.3.2
-- 3.11: Adicionar Item 7.3 do PROTOCOLO MHC2
-
-**Secao 5.0 - Poco (9 itens):**
-- 5.2: Adicionar Items 8.2, 8.3, 8.4 do PROTOCOLO MHC2
-- 5.7: Adicionar Item 8.1 do PROTOCOLO MHC2
-
-**Secao 6.0 - Embaixo da Cabina (8 itens):**
-- 6.3: Adicionar Item 9.3 do PROTOCOLO MHC2
-- 6.5: Adicionar Item 9.2 do PROTOCOLO MHC2
-- 6.8: Adicionar Item 9.1 do PROTOCOLO MHC2
-
-**Secao 7.0 - Pavimento (5 itens):**
-- 7.1: Adicionar Item 10.3 do PROTOCOLO MHC2
-- 7.2: Adicionar Items 10.1, 10.2 do PROTOCOLO MHC2
-
-**Secao 9.0 - Testes de Comissionamento (19 itens):**
-- Adicionar referencias NBR 16858-1:2021 em todos os itens de teste
-- 9.7: Adicionar Item 2.4 do PROTOCOLO MHC2
-
-**Secao 10.0 - CTC (1 item):**
-- 10.1: Adicionar Item 6.1 do PROTOCOLO MHC2
+- **Fechar e reabrir o app**: dados preservados via armazenamento nativo
+- **Atualizar página no navegador**: dados preservados via localStorage
+- **Reiniciar inspeção**: limpa tudo (ambos os armazenamentos)
+- **Fotos**: pode anexar várias fotos por item, mistura câmera + galeria, remover individualmente
 
 ---
 
-## Resultado Final
+## Observação Importante
 
-Quando o usuario expandir um card de inspecao, vera:
+Após implementação, o usuário precisará:
+1. Fazer `git pull` no projeto
+2. Rodar `npm install` (para instalar `@capacitor/preferences`)
+3. Rodar `npx cap sync android`
+4. Reconstruir o APK
 
-```text
-+---------------------------------------------------------+
-| [1.1]  Quadro de forca                           [^]    |
-|        [Pendente]                                       |
-+---------------------------------------------------------+
-|  Descricao                                              |
-|  (Fusiveis; Disjuntores; IDR; Cabeamento;               |
-|  Aterramento; Organizacao; Kit fechadura e/ou           |
-|  ferrolho)                                              |
-|                                                         |
-|  ********** Item 1.2 do PROTOCOLO MHC2 e EOX:           |
-|  Verificar as condicoes da energia do empreendimento    |
-+---------------------------------------------------------+
-```
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Tipo de Alteracao |
-|---------|-------------------|
-| `src/components/inspection/InspectionItemCard.tsx` | Remover 1 linha |
-| `src/types/inspection.ts` | Atualizar ~80 descricoes |
