@@ -7,7 +7,7 @@ export interface InspectionItem {
   description: string;
   status: ItemStatus;
   comment: string;
-  photoUrl?: string;
+  photoUrls?: string[];
 }
 
 export interface InspectionSection {
