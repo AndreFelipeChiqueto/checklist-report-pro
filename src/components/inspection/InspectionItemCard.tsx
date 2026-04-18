@@ -11,14 +11,16 @@ interface InspectionItemCardProps {
   item: InspectionItem;
   onStatusChange: (status: ItemStatus) => void;
   onCommentChange: (comment: string) => void;
-  onPhotoChange: (photoUrl: string | undefined) => void;
+  onPhotoAdd: (photoUrl: string) => void;
+  onPhotoRemove: (index: number) => void;
 }
 
 export const InspectionItemCard = ({
   item,
   onStatusChange,
   onCommentChange,
-  onPhotoChange,
+  onPhotoAdd,
+  onPhotoRemove,
 }: InspectionItemCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const showPhotoCapture = item.status === 'nao_conforme';
@@ -68,9 +70,9 @@ export const InspectionItemCard = ({
                 <span className="text-xs text-muted-foreground">(obrigatório)</span>
               </label>
               <PhotoCapture
-                photoUrl={item.photoUrl}
-                onCapture={(url) => onPhotoChange(url)}
-                onRemove={() => onPhotoChange(undefined)}
+                photoUrls={item.photoUrls ?? []}
+                onAdd={onPhotoAdd}
+                onRemove={onPhotoRemove}
               />
             </div>
           )}

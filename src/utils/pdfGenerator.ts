@@ -158,10 +158,12 @@ export const generateCompletePDF = async (data: InspectionData): Promise<Blob> =
         yPos += commentLines.length * 4;
       }
       
-      // Add photo if exists
-      if (item.photoUrl) {
+      // Add photos if any
+      if (item.photoUrls && item.photoUrls.length > 0) {
         yPos += 2;
-        yPos = addImageToPDF(doc, item.photoUrl, yPos, pageNumber);
+        for (const url of item.photoUrls) {
+          yPos = addImageToPDF(doc, url, yPos, pageNumber);
+        }
       }
       
       yPos += 3;
@@ -276,10 +278,12 @@ export const generatePendingPDF = async (data: InspectionData): Promise<Blob> =>
         yPos += commentLines.length * 4;
       }
       
-      // Add photo if exists
-      if (item.photoUrl) {
+      // Add photos if any
+      if (item.photoUrls && item.photoUrls.length > 0) {
         yPos += 2;
-        yPos = addImageToPDF(doc, item.photoUrl, yPos, pageNumber);
+        for (const url of item.photoUrls) {
+          yPos = addImageToPDF(doc, url, yPos, pageNumber);
+        }
       }
       
       // Separator

@@ -17,7 +17,8 @@ const Index = () => {
     updateGeneralInfo,
     updateItemStatus,
     updateItemComment,
-    updateItemPhoto,
+    addItemPhoto,
+    removeItemPhoto,
     addClientObservation,
     removeClientObservation,
     getStatistics,
@@ -84,7 +85,7 @@ const Index = () => {
         {activeTab === 'checklist' && <div className="space-y-4">
             <StatisticsCard {...stats} />
             
-            {inspection.sections.map(section => <SectionCard key={section.id} section={section} onStatusChange={(itemId, status) => updateItemStatus(section.id, itemId, status)} onCommentChange={(itemId, comment) => updateItemComment(section.id, itemId, comment)} onPhotoChange={(itemId, photoUrl) => updateItemPhoto(section.id, itemId, photoUrl)} />)}
+            {inspection.sections.map(section => <SectionCard key={section.id} section={section} onStatusChange={(itemId, status) => updateItemStatus(section.id, itemId, status)} onCommentChange={(itemId, comment) => updateItemComment(section.id, itemId, comment)} onPhotoAdd={(itemId, photoUrl) => addItemPhoto(section.id, itemId, photoUrl)} onPhotoRemove={(itemId, index) => removeItemPhoto(section.id, itemId, index)} />)}
 
             <ClientObservations observations={inspection.clientObservations} onAdd={addClientObservation} onRemove={removeClientObservation} />
           </div>}

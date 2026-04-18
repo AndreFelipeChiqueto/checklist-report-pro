@@ -9,14 +9,16 @@ interface SectionCardProps {
   section: InspectionSection;
   onStatusChange: (itemId: string, status: ItemStatus) => void;
   onCommentChange: (itemId: string, comment: string) => void;
-  onPhotoChange: (itemId: string, photoUrl: string | undefined) => void;
+  onPhotoAdd: (itemId: string, photoUrl: string) => void;
+  onPhotoRemove: (itemId: string, index: number) => void;
 }
 
 export const SectionCard = ({
   section,
   onStatusChange,
   onCommentChange,
-  onPhotoChange,
+  onPhotoAdd,
+  onPhotoRemove,
 }: SectionCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -90,7 +92,8 @@ export const SectionCard = ({
               item={item}
               onStatusChange={(status) => onStatusChange(item.id, status)}
               onCommentChange={(comment) => onCommentChange(item.id, comment)}
-              onPhotoChange={(photoUrl) => onPhotoChange(item.id, photoUrl)}
+              onPhotoAdd={(photoUrl) => onPhotoAdd(item.id, photoUrl)}
+              onPhotoRemove={(index) => onPhotoRemove(item.id, index)}
             />
           ))}
         </div>
